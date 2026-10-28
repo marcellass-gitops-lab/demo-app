@@ -1,0 +1,95 @@
+name: CI - Build, Test & Update GitOps Config
+
+on:
+  push:
+    branches: [ "main" ]
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  test:
+    name: Run Unit Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt -r requirements-dev.txt
+
+      - name: Run Pytest
+        run: |
+          pytest tests/ -v
+
+  build-and-push:
+    name: Build & Push Docker Image
+    needs: test
+    runs-on: ubuntu-latest
+    outputs:
+      image_tag: ${{ steps.set_tag.outputs.tag }}
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Define Short Commit SHA
+        id: set_tag
+        run: echo "tag=$(echo ${{ github.sha }} | cut -c1-7)" >> $GITHUB_OUTPUT
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and Push Image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/demo-app:${{ steps.set_tag.outputs.tag }}
+            ghcr.io/${{ github.repository_owner }}/demo-app:latest
+
+  update-config:
+    name: Update Kustomize in Config Repo
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout demo-config Repository
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ github.repository_owner }}/demo-config
+          token: ${{ secrets.CONFIG_REPO_PAT }}
+          ref: main
+
+      - name: Setup Kustomize
+        uses: imranismail/setup-kustomize@v2
+        with:
+          kustomize-version: "5.3.0"
+
+      - name: Update Image Tag
+        run: |
+          cd overlays/dev
+          kustomize edit set image ghcr.io/${{ github.repository_owner }}/demo-app=ghcr.io/${{ github.repository_owner }}/demo-app:${{ needs.build-and-push.outputs.image_tag }}
+
+      - name: Commit and Push Changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add overlays/dev/kustomization.yaml
+          git diff --quiet && git diff --staged --quiet || git commit -m "ci: auto-update image to ${{ needs.build-and-push.outputs.image_tag }} [skip ci]"
+          git push origin main
