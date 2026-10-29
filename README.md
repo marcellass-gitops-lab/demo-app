@@ -1,10 +1,10 @@
-# 🚀 End-to-End GitOps Pipeline with FastAPI, GitHub Actions & ArgoCD
+# End-to-End GitOps Pipeline with FastAPI, GitHub Actions & ArgoCD
 
 Implementação prática de um fluxo completo de GitOps e Integração/Entrega Contínua (CI/CD) para microsserviços em Kubernetes, utilizando **ArgoCD**, **GitHub Actions**, **Kustomize** e um cluster local multi-container provisionado com **Kind**.
 
 ---
 
-## 🏗️ Arquitetura e Segregação de Responsabilidades
+## Arquitetura e Segregação de Responsabilidades
 
 Para eliminar o risco de credenciais administrativas de cluster expostas na esteira de CI e prevenir ciclos de build recursivos, a arquitetura foi desenhada com estrita segregação de repositórios:
 
@@ -42,7 +42,7 @@ Para eliminar o risco de credenciais administrativas de cluster expostas na este
 
 ---
 
-## 🛡️ Resiliência e Governança Comprovada em Testes
+## Resiliência e Governança Comprovada em Testes
 
 O ambiente foi validado sob três cenários de estresse e resiliência:
 
@@ -55,7 +55,7 @@ O ambiente foi validado sob três cenários de estresse e resiliência:
 
 ---
 
-## 🛠️ Tecnologias Utilizadas
+## Tecnologias Utilizadas
 
 * **Linguagem & Framework:** Python 3.11, FastAPI, Uvicorn
 * **Testes & Qualidade:** Pytest, HTTPX
